@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>校园二手闲置交易平台</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            background-attachment: fixed;
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* 🚨 星空闪烁动画核心代码 */
+        @keyframes twinkle {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.3; }
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            background-image:
+                    radial-gradient(1.5px 1.5px at 20px 30px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1.5px 1.5px at 40px 70px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2.5px 2.5px at 160px 120px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
+                    radial-gradient(1.5px 1.5px at 200px 60px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 250px 150px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            /* 🚨 挂载动画 */
+            animation: twinkle 4s infinite alternate;
+        }
+
+        /* 顶部导航栏 */
+        .navbar { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 0 40px; height: 64px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; flex-shrink: 0; }
+        .navbar h1 { font-size: 20px; color: #fff; letter-spacing: 1px; font-weight: 600; }
+        .nav-links { display: flex; gap: 20px; align-items: center; font-size: 14px; }
+        .nav-links span { color: rgba(255,255,255,0.8); }
+        .nav-links a { text-decoration: none; color: rgba(255,255,255,0.6); transition: color 0.2s; }
+        .nav-links a:hover { color: #fff; }
+        .nav-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; margin-right: 5px; vertical-align: middle; }
+        .nav-avatar-text { width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; color: white; display: inline-flex; justify-content: center; align-items: center; font-weight: bold; font-size: 14px; margin-right: 5px; vertical-align: middle; }
+
+        /* 下拉菜单 */
+        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #1e293b; min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5); border-radius: 8px; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
+        .dropdown-content a { color: #cbd5e1 !important; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px; transition: background 0.2s; margin-left: 0 !important; }
+        .dropdown-content a:hover { background-color: rgba(59, 130, 246, 0.2); color: #fff !important; }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        /* 页面主容器 */
+        .container { max-width: 1300px; margin: 0 auto; padding: 30px 20px 0 20px; width: 100%; flex: 1; display: flex; flex-direction: column; }
+
+        /* 搜索栏 */
+        .search-bar { display: flex; justify-content: center; margin-bottom: 40px; flex-shrink: 0; }
+        .search-bar form { display: flex; width: 100%; max-width: 900px; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); border-radius: 50px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(255, 255, 255, 0.2); align-items: center; }
+        .search-bar form:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3); border-color: rgba(255, 255, 255, 0.4); }
+        .search-bar input { flex: 1; border: none; padding: 16px 25px; font-size: 15px; outline: none; background: transparent; color: #fff; min-width: 200px;}
+        .search-bar input::placeholder { color: rgba(255,255,255,0.5); }
+        .search-bar select { border: none; background: transparent; color: #fff; outline: none; font-size: 14px; padding: 0 10px; cursor: pointer; border-left: 1px solid rgba(255,255,255,0.2); margin-left: 10px; }
+        .search-bar select option { background: #1e293b; color: #fff; }
+        .search-bar button { background: #3b82f6; color: white; border: none; padding: 16px 40px; font-size: 15px; cursor: pointer; font-weight: 600; transition: background 0.2s; height: 100%; }
+        .search-bar button:hover { background: #2563eb; }
+
+        /* 商品网格：固定 4 列 */
+        .goods-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 25px; flex: 1; align-content: flex-start; margin-bottom: 30px; }
+        @media (max-width: 1200px) { .goods-container { grid-template-columns: repeat(3, 1fr); } }
+
+        .goods-card { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.15); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.1); position: relative; cursor: pointer; width: 100%; }
+        .goods-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(59, 130, 246, 0.25); border-color: #3b82f6; }
+
+        .img-wrapper { height: 200px; overflow: hidden; background: #f1f5f9; position: relative; }
+        .img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        .goods-card:hover .img-wrapper img { transform: scale(1.08); }
+
+        .category-tag { position: absolute; top: 10px; left: 10px; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); color: #60a5fa; font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(96, 165, 250, 0.3); font-weight: 500; }
+
+        .card-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.3); opacity: 0; display: flex; justify-content: center; align-items: center; transition: opacity 0.3s; }
+        .goods-card:hover .card-overlay { opacity: 1; }
+        .view-btn { background: #3b82f6; color: white; padding: 8px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; transform: translateY(20px); transition: transform 0.3s; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5); }
+        .goods-card:hover .view-btn { transform: translateY(0); }
+
+        .info { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .price-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+        .price { color: #ef4444; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+        .price small { font-size: 14px; margin-right: 2px; }
+
+        .seller-info { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed #e2e8f0; font-size: 12px; color: #64748b; }
+        .seller-name { display: flex; align-items: center; gap: 5px; }
+        .seller-avatar { width: 18px; height: 18px; border-radius: 50%; background: #3b82f6; color: white; display: flex; justify-content: center; align-items: center; font-size: 10px; }
+
+        /* 升级版分页样式 */
+        .pagination-container { display: flex; justify-content: center; align-items: center; margin-top: auto; padding: 30px 0 50px 0; gap: 20px; font-size: 14px; color: rgba(255,255,255,0.7); flex-shrink: 0; flex-wrap: wrap; }
+        .page-info { margin-right: 15px; }
+        .page-numbers { display: flex; gap: 8px; }
+        .page-numbers a, .page-numbers span { display: inline-flex; justify-content: center; align-items: center; min-width: 36px; height: 36px; padding: 0 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; text-decoration: none; color: #fff; font-weight: 500; transition: all 0.2s; }
+        .page-numbers a:hover { background: #3b82f6; border-color: #3b82f6; transform: translateY(-2px); }
+        .page-numbers .active { background: #3b82f6 !important; border-color: #3b82f6 !important; color: white; font-weight: bold; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4); cursor: default; }
+        .page-nav-btn { display: inline-flex; justify-content: center; align-items: center; padding: 0 15px; height: 36px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; text-decoration: none; color: #fff; font-weight: 500; transition: all 0.2s; }
+        .page-nav-btn:hover:not(.disabled) { background: #3b82f6; border-color: #3b82f6; transform: translateY(-2px); }
+        .page-nav-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+        .jump-box { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
+        .jump-box input { width: 50px; height: 36px; text-align: center; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #fff; outline: none; font-size: 14px; }
+        .jump-box input::-webkit-outer-spin-button, .jump-box input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .jump-box button { height: 36px; padding: 0 15px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .jump-box button:hover { background: #2563eb; }
+
+        /* 求购墙 */
+        .wanted-wall { position: fixed; left: 0; top: 100px; width: 60px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255, 255, 255, 0.1); border-left: none; border-radius: 0 16px 16px 0; box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3); z-index: 999; transition: width 0.3s ease-in-out, box-shadow 0.3s; overflow: hidden; cursor: pointer; }
+        .wanted-wall:hover { width: 340px; box-shadow: 10px 0 25px rgba(0, 0, 0, 0.5); border-color: #f59e0b; }
+        .wanted-wall-content { display: flex; width: 340px; height: 550px; padding: 20px; color: #e2e8f0; }
+        .wall-icon { width: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; color: #f59e0b; flex-shrink: 0; }
+        .wall-list { margin-left: 20px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; padding-right: 8px; }
+        .wall-list::-webkit-scrollbar { width: 4px; }
+        .wall-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .wall-item { background: rgba(255, 255, 255, 0.05); padding: 12px 15px; border-radius: 8px; font-size: 13px; border-left: 3px solid #f59e0b; transition: background 0.2s; white-space: normal; word-break: break-all; flex-shrink: 0; }
+        .wall-item:hover { background: rgba(255, 255, 255, 0.1); }
+        .wall-time { color: #64748b; font-size: 11px; margin-top: 6px; display: block; }
+    </style>
+</head>
+<body>
+
+<!-- 求购墙 -->
+<div class="wanted-wall">
+    <div class="wanted-wall-content">
+        <div class="wall-icon">
+            <span style="writing-mode: vertical-lr; letter-spacing: 5px; font-weight: bold; font-size: 16px; color: #f59e0b;">求 购 墙</span>
+        </div>
+        <div class="wall-list">
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 5px; padding-left: 5px;">🔥 校园热门求购榜</div>
+            <div class="wall-item" style="border-left-color: #f59e0b;">
+                <div style="font-size: 11px; color: #f59e0b; margin-bottom: 5px; font-weight: bold;">[ 急求 ]</div>
+                📢 <b>求购</b>：收一本《高等数学》第七版下册，带笔记最好，价格好商量~
+                <span class="wall-time">今天 10:30</span>
+            </div>
+            <div class="wall-item" style="border-left-color: #3b82f6;">
+                <div style="font-size: 11px; color: #3b82f6; margin-bottom: 5px; font-weight: bold;">[ 诚心收 ]</div>
+                📢 <b>求购</b>：有没有同学出二手的山地自行车？希望能看车再买。
+                <span class="wall-time">今天 09:15</span>
+            </div>
+            <div th:each="wanted : ${wallWantedList}" class="wall-item" style="border-left-color: #10b981;">
+                <div style="font-size: 11px; color: #10b981; margin-bottom: 5px; font-weight: bold;">[ 最新发布 ]</div>
+                📢 <b>求购</b>：<span th:text="${wanted.content}">内容...</span>
+                <span class="wall-time" th:text="${#dates.format(wanted.createTime, 'MM-dd HH:mm')}">时间</span>
+            </div>
+            <div class="wall-item" style="border-left-color: #8b5cf6;">
+                <div style="font-size: 11px; color: #8b5cf6; margin-bottom: 5px; font-weight: bold;">[ 数码 ]</div>
+                📢 <b>求购</b>：求购一个闲置的电竞鼠标，罗技或者雷蛇都可以。
+                <span class="wall-time">昨天 20:10</span>
+            </div>
+            <div class="wall-item" style="border-left-color: #ec4899;">
+                <div style="font-size: 11px; color: #ec4899; margin-bottom: 5px; font-weight: bold;">[ 生活 ]</div>
+                📢 <b>求购</b>：宿舍缺个吹风机，有没有学姐毕业出二手的？
+                <span class="wall-time">昨天 15:45</span>
+            </div>
+            <div style="text-align: center; margin-top: 15px; padding-bottom: 10px;">
+                <a href="javascript:void(0);" onclick="alert('求购功能正在紧急开发中，敬请期待！')" style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px dashed #f59e0b; padding: 8px 15px; border-radius: 8px; font-size: 13px; text-decoration: none; transition: all 0.2s;">
+                    ➕ 我也要发布求购
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导航栏 -->
+<div class="navbar">
+    <h1>校园二手闲置交易平台</h1>
+    <div class="nav-links">
+        <div th:if="${session.loginUser != null}" style="display: flex; gap: 20px; align-items: center;">
+            <div class="dropdown" style="position: relative; display: inline-block;">
+                <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 5px 0;">
+                    <img th:if="${session.loginUser.avatar != null and session.loginUser.avatar != ''}" th:src="${session.loginUser.avatar}" class="nav-avatar" />
+                    <div th:if="${session.loginUser.avatar == null or session.loginUser.avatar == ''}" class="nav-avatar-text" th:text="${#strings.substring(session.loginUser.username, 0, 1).toUpperCase()}">A</div>
+                    <span>欢迎您，<b th:text="${session.loginUser.username}"></b> ▾</span>
+                </div>
+                <div class="dropdown-content">
+                    <a href="/user/profile">个人中心</a>
+                    <a href="/order/my">我的订单</a>
+                    <a href="/logout" style="color: #ef4444;">退出登录</a>
+                </div>
+            </div>
+
+            <a href="/user/messages" style="position: relative; display: flex; align-items: center; color: #ffd04b; font-weight: bold;">
+                📬 消息
+                <span id="unreadBadge" style="display: none; position: absolute; top: -8px; right: -15px; background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px;">0</span>
+            </a>
+
+            <a href="/cart/my" style="color: #ffd04b; font-weight: bold;">🛒 购物车</a>
+
+            <a th:if="${session.loginUser.role == 'SELLER' or session.loginUser.role == 'ADMIN'}" href="/goods/publish">+ 发布闲置</a>
+        </div>
+        <div th:if="${session.loginUser == null}">
+            <a href="/login">请登录</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+        <form action="/goods/index" method="get" id="searchForm">
+            <input type="text" name="keyword" placeholder="搜索心仪的物品..." th:value="${keyword}">
+            <select name="minPrice">
+                <option value="">最低价</option>
+                <option value="0" th:selected="${minPrice == '0'}">0元</option>
+                <option value="10" th:selected="${minPrice == '10'}">10元</option>
+                <option value="50" th:selected="${minPrice == '50'}">50元</option>
+            </select>
+            <span style="color: #fff; margin: 0 5px;">-</span>
+            <select name="maxPrice">
+                <option value="">最高价</option>
+                <option value="10" th:selected="${maxPrice == '10'}">10元</option>
+                <option value="50" th:selected="${maxPrice == '50'}">50元</option>
+                <option value="100" th:selected="${maxPrice == '100'}">100元</option>
+                <option value="9999" th:selected="${maxPrice == '9999'}">不限</option>
+            </select>
+            <select name="sort" style="margin-right: 10px;">
+                <option value="newest" th:selected="${sort == 'newest'}">最新发布</option>
+                <option value="priceAsc" th:selected="${sort == 'priceAsc'}">价格从低到高</option>
+                <option value="priceDesc" th:selected="${sort == 'priceDesc'}">价格从高到低</option>
+            </select>
+            <button type="submit">搜索</button>
+        </form>
+    </div>
+
+    <!-- 商品展示区 -->
+    <div class="content-area">
+        <div class="goods-container">
+            <div th:each="goods : ${page.records}" class="goods-card">
+                <a th:href="@{/goods/detail/{id}(id=${goods.id})}">
+                    <div class="img-wrapper">
+                        <img th:if="${goodsImageMap[goods.id] != null}" th:src="${goodsImageMap[goods.id]}" alt="物品图片" />
+                        <img th:if="${goodsImageMap[goods.id] == null}" src="https://via.placeholder.com/300x200?text=暂无图片" alt="暂无图片" />
+
+                        <div class="category-tag" th:each="cat : ${categoryList}" th:if="${cat.id == goods.categoryId}" th:text="${cat.name}">分类</div>
+
+                        <div class="card-overlay">
+                            <span class="view-btn">查看详情 ➔</span>
+                        </div>
+                    </div>
+                </a>
+                <div class="info">
+                    <a th:href="@{/goods/detail/{id}(id=${goods.id})}" style="text-decoration: none;">
+                        <div class="title" th:text="${goods.title}">物品标题</div>
+                    </a>
+                    <div>
+                        <div class="price-row">
+                            <div class="price"><small>￥</small><span th:text="${goods.price}">0.00</span></div>
+                        </div>
+                        <div class="seller-info">
+                            <div class="seller-name">
+                                <img th:if="${goods.sellerAvatar != null and goods.sellerAvatar != ''}" th:src="${goods.sellerAvatar}" class="seller-avatar-img" style="width:18px; height:18px; border-radius:50%; object-fit:cover;" />
+                                <div th:if="${goods.sellerAvatar == null or goods.sellerAvatar == ''}" class="seller-avatar" th:text="${#strings.substring(goods.sellerName, 0, 1).toUpperCase()}">A</div>
+                                <span th:text="${goods.sellerName}">校园用户</span>
+                            </div>
+                            <div th:text="${#dates.format(goods.createTime, 'MM-dd HH:mm')}">时间</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 升级版分页 -->
+    <div class="pagination-container">
+        <div class="page-info">
+            共 <b th:text="${page.total}">0</b> 件物品，第 <b th:text="${page.current}">1</b> / <b th:text="${page.pages}">1</b> 页
+        </div>
+
+        <a th:if="${page.current > 1}"
+           th:href="@{/goods/index(pageNum=${page.current - 1}, keyword=${keyword}, minPrice=${minPrice}, maxPrice=${maxPrice}, sort=${sort}, categoryId=${categoryId})}"
+           class="page-nav-btn">上一页</a>
+        <span th:if="${page.current <= 1}" class="page-nav-btn disabled">上一页</span>
+
+        <div class="page-numbers">
+            <th:block th:each="i : ${#numbers.sequence(1, page.pages)}">
+                <span th:if="${i == page.current}" class="active" th:text="${i}">1</span>
+                <a th:if="${i != page.current}"
+                   th:href="@{/goods/index(pageNum=${i}, keyword=${keyword}, minPrice=${minPrice}, maxPrice=${maxPrice}, sort=${sort}, categoryId=${categoryId})}"
+                   th:text="${i}">1</a>
+            </th:block>
+        </div>
+
+        <a th:if="${page.current < page.pages}"
+           th:href="@{/goods/index(pageNum=${page.current + 1}, keyword=${keyword}, minPrice=${minPrice}, maxPrice=${maxPrice}, sort=${sort}, categoryId=${categoryId})}"
+           class="page-nav-btn">下一页</a>
+        <span th:if="${page.current >= page.pages}" class="page-nav-btn disabled">下一页</span>
+
+        <div class="jump-box">
+            <span>前往</span>
+            <input type="number" id="jumpPageInput" min="1" th:max="${page.pages}" th:value="${page.current}">
+            <span>页</span>
+            <button type="button" onclick="jumpToPage()">GO</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function jumpToPage() {
+        const input = document.getElementById('jumpPageInput');
+        let targetPage = parseInt(input.value);
+        const maxPage = parseInt(input.getAttribute('max'));
+
+        if (isNaN(targetPage) || targetPage < 1) {
+            alert("请输入正确的页码！");
+            input.value = 1;
+            return;
+        }
+        if (targetPage > maxPage) {
+            alert("页码超出了最大页数！");
+            input.value = maxPage;
+            return;
+        }
+
+        const keyword = document.querySelector('input[name="keyword"]').value || '';
+        const minPrice = document.querySelector('select[name="minPrice"]').value || '';
+        const maxPrice = document.querySelector('select[name="maxPrice"]').value || '';
+        const sort = document.querySelector('select[name="sort"]').value || 'newest';
+
+        const url = `/goods/index?pageNum=${targetPage}&keyword=${keyword}&minPrice=${minPrice}&maxPrice=${maxPrice}&sort=${sort}`;
+        window.location.href = url;
+    }
+
+    document.getElementById('jumpPageInput')?.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            jumpToPage();
+        }
+    });
+
+    function fetchUnreadCount() {
+        if (document.body.innerHTML.includes('欢迎您')) {
+            fetch('/user/unreadCount?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(res => {
+                    let count = res.data;
+                    const badge = document.getElementById('unreadBadge');
+                    if (badge) {
+                        if (count && parseInt(count) > 0) {
+                            badge.style.display = 'inline-block';
+                            badge.innerText = count;
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => console.log("获取消息数失败: " + error));
+        }
+    }
+    document.addEventListener("DOMContentLoaded", fetchUnreadCount);
+    setInterval(fetchUnreadCount, 10000);
+</script>
+
+</body>
+<!-- ========================================== -->
+<!-- 🚨 首页同款：深空渐变 + 繁星 + 流星雨特效 -->
+<!-- ========================================== -->
+<div id="galaxy-bg" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);">
+
+    <!-- 1. 繁星层 -->
+    <div class="stars star-small"></div>
+    <div class="stars star-medium"></div>
+    <div class="stars star-large"></div>
+
+    <!-- 2. 流星雨层 (10颗彩色流星) -->
+    <div class="meteors-layer">
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+    </div>
+</div>
+
+<style>
+    /* 繁星层 */
+    .stars { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: transparent; }
+
+    .star-small {
+        width: 1px; height: 1px;
+        box-shadow: 10vw 20vh #FFF, 30vw 40vh #FFF, 50vw 60vh #FFF, 70vw 80vh #FFF, 90vw 10vh #FFF, 20vw 70vh #FFF, 40vw 90vh #FFF, 60vw 30vh #FFF, 80vw 50vh #FFF, 15vw 55vh #FFF, 35vw 15vh #FFF, 55vw 75vh #FFF, 75vw 25vh #FFF, 95vw 65vh #FFF, 5vw 85vh #FFF;
+        animation: twinkle-slow 4s infinite alternate;
+    }
+
+    .star-medium {
+        width: 2px; height: 2px;
+        box-shadow: 15vw 25vh #FFF, 35vw 75vh #FFF, 65vw 15vh #FFF, 85vw 55vh #FFF, 5vw 45vh #FFF, 25vw 85vh #FFF, 55vw 35vh #FFF, 75vw 65vh #FFF, 95vw 5vh #FFF, 45vw 95vh #FFF;
+        animation: twinkle-medium 3s infinite alternate;
+    }
+
+    .star-large {
+        width: 3px; height: 3px;
+        filter: drop-shadow(0 0 6px #fff);
+        box-shadow: 20vw 50vh #FFF, 50vw 10vh #FFF, 80vw 70vh #FFF, 10vw 80vh #FFF, 70vw 20vh #FFF, 40vw 30vh #FFF, 90vw 40vh #FFF, 30vw 90vh #FFF;
+        animation: twinkle-fast 2s infinite alternate;
+    }
+
+    @keyframes twinkle-slow { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+    @keyframes twinkle-medium { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+    @keyframes twinkle-fast { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 1; transform: scale(1.5); } }
+
+    /* 流星雨层 */
+    .meteor { position: absolute; width: 160px; height: 2px; opacity: 0; transform: rotate(-45deg); }
+    .meteor:nth-child(1), .meteor:nth-child(2), .meteor:nth-child(3) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+    .meteor:nth-child(4), .meteor:nth-child(5), .meteor:nth-child(6) { background: linear-gradient(90deg, #e0c3fc, rgba(224,195,252,0)); box-shadow: 0 0 10px rgba(224,195,252,0.8); }
+    .meteor:nth-child(7), .meteor:nth-child(8), .meteor:nth-child(9) { background: linear-gradient(90deg, #8ec5fc, rgba(142,197,252,0)); box-shadow: 0 0 10px rgba(142,197,252,0.8); }
+    .meteor:nth-child(10) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
+
+    .meteor:nth-child(1) { top: -10%; left: 10%; animation: meteor-fall 4s linear infinite; animation-delay: 0s; }
+    .meteor:nth-child(2) { top: -10%; left: 40%; animation: meteor-fall 6s linear infinite; animation-delay: 2s; }
+    .meteor:nth-child(3) { top: -10%; left: 70%; animation: meteor-fall 5s linear infinite; animation-delay: 4s; }
+    .meteor:nth-child(4) { top: -10%; left: 20%; animation: meteor-fall 7s linear infinite; animation-delay: 1s; }
+    .meteor:nth-child(5) { top: -10%; left: 50%; animation: meteor-fall 4.5s linear infinite; animation-delay: 3s; }
+    .meteor:nth-child(6) { top: -10%; left: 80%; animation: meteor-fall 8s linear infinite; animation-delay: 5s; }
+    .meteor:nth-child(7) { top: -10%; left: 30%; animation: meteor-fall 5.5s linear infinite; animation-delay: 6s; }
+    .meteor:nth-child(8) { top: -10%; left: 60%; animation: meteor-fall 7.5s linear infinite; animation-delay: 7s; }
+    .meteor:nth-child(9) { top: -10%; left: 90%; animation: meteor-fall 6.5s linear infinite; animation-delay: 8s; }
+    .meteor:nth-child(10) { top: -10%; left: 45%; animation: meteor-fall 9s linear infinite; animation-delay: 1.5s; }
+
+    @keyframes meteor-fall {
+        0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; }
+        20% { transform: translateX(-600px) translateY(600px) rotate(-45deg); opacity: 0; }
+        100% { opacity: 0; }
+    }
+</style>
+<!-- ========================================== -->
+<!-- 🚨 特效代码结束 -->
+<!-- ========================================== -->
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>后台管理首页 - 数据看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* 保持原本深蓝底色，后面会覆盖星空层 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #e2e8f0; min-height: 100vh; }
+
+        .header { background: linear-gradient(90deg, rgba(30, 58, 138, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%); backdrop-filter: blur(10px); padding: 20px 40px; border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .header h1 { font-size: 24px; color: #fff; font-weight: 600; letter-spacing: 1px; }
+        .nav-group { display: flex; gap: 15px; }
+        .nav-group a { text-decoration: none; color: #fff; background: rgba(255, 255, 255, 0.15); padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.3s; border: 1px solid rgba(255, 255, 255, 0.2); }
+        .nav-group a:hover { background: rgba(255, 255, 255, 0.25); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255,255,255,0.1); }
+
+        .content { max-width: 1400px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; position: relative; z-index: 10; }
+
+        /* 卡片加上毛玻璃和半透明效果，透出背后的星空 */
+        .card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border-radius: 16px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); }
+        .card-full { grid-column: span 2; }
+
+        .card h2 { font-size: 20px; color: #f8fafc; margin-bottom: 10px; font-weight: 600; }
+        .info-text { color: #94a3b8; font-size: 14px; margin-bottom: 20px; }
+        .info-text span { color: #60a5fa; font-weight: bold; }
+
+        #pieChart { width: 100%; height: 350px; }
+        #amountChart { width: 100%; height: 300px; }
+        #userChart { width: 100%; height: 300px; }
+    </style>
+</head>
+<body>
+
+<!-- ========================================== -->
+<!-- 🚨 后台专属：深空渐变 + 繁星 + 流星雨 -->
+<!-- ========================================== -->
+<div id="galaxy-bg" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);">
+
+    <!-- 繁星层 -->
+    <div class="stars star-small"></div>
+    <div class="stars star-medium"></div>
+    <div class="stars star-large"></div>
+
+    <!-- 流星雨层 -->
+    <div class="meteors-layer">
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+    </div>
+</div>
+
+<style>
+    /* 繁星层 */
+    .stars { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: transparent; }
+    .star-small { width: 1px; height: 1px; box-shadow: 10vw 20vh #FFF, 30vw 40vh #FFF, 50vw 60vh #FFF, 70vw 80vh #FFF, 90vw 10vh #FFF, 20vw 70vh #FFF, 40vw 90vh #FFF, 60vw 30vh #FFF, 80vw 50vh #FFF, 15vw 55vh #FFF, 35vw 15vh #FFF, 55vw 75vh #FFF, 75vw 25vh #FFF, 95vw 65vh #FFF, 5vw 85vh #FFF; animation: twinkle-slow 4s infinite alternate; }
+    .star-medium { width: 2px; height: 2px; box-shadow: 15vw 25vh #FFF, 35vw 75vh #FFF, 65vw 15vh #FFF, 85vw 55vh #FFF, 5vw 45vh #FFF, 25vw 85vh #FFF, 55vw 35vh #FFF, 75vw 65vh #FFF, 95vw 5vh #FFF, 45vw 95vh #FFF; animation: twinkle-medium 3s infinite alternate; }
+    .star-large { width: 3px; height: 3px; filter: drop-shadow(0 0 6px #fff); box-shadow: 20vw 50vh #FFF, 50vw 10vh #FFF, 80vw 70vh #FFF, 10vw 80vh #FFF, 70vw 20vh #FFF, 40vw 30vh #FFF, 90vw 40vh #FFF, 30vw 90vh #FFF; animation: twinkle-fast 2s infinite alternate; }
+
+    @keyframes twinkle-slow { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+    @keyframes twinkle-medium { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+    @keyframes twinkle-fast { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 1; transform: scale(1.5); } }
+
+    /* 流星雨层 */
+    .meteor { position: absolute; width: 160px; height: 2px; opacity: 0; transform: rotate(-45deg); }
+    .meteor:nth-child(1), .meteor:nth-child(2), .meteor:nth-child(3) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+    .meteor:nth-child(4), .meteor:nth-child(5), .meteor:nth-child(6) { background: linear-gradient(90deg, #e0c3fc, rgba(224,195,252,0)); box-shadow: 0 0 10px rgba(224,195,252,0.8); }
+    .meteor:nth-child(7), .meteor:nth-child(8) { background: linear-gradient(90deg, #8ec5fc, rgba(142,197,252,0)); box-shadow: 0 0 10px rgba(142,197,252,0.8); }
+
+    .meteor:nth-child(1) { top: -10%; left: 10%; animation: meteor-fall 4s linear infinite; animation-delay: 0s; }
+    .meteor:nth-child(2) { top: -10%; left: 40%; animation: meteor-fall 6s linear infinite; animation-delay: 2s; }
+    .meteor:nth-child(3) { top: -10%; left: 70%; animation: meteor-fall 5s linear infinite; animation-delay: 4s; }
+    .meteor:nth-child(4) { top: -10%; left: 20%; animation: meteor-fall 7s linear infinite; animation-delay: 1s; }
+    .meteor:nth-child(5) { top: -10%; left: 50%; animation: meteor-fall 4.5s linear infinite; animation-delay: 3s; }
+    .meteor:nth-child(6) { top: -10%; left: 80%; animation: meteor-fall 8s linear infinite; animation-delay: 5s; }
+    .meteor:nth-child(7) { top: -10%; left: 30%; animation: meteor-fall 5.5s linear infinite; animation-delay: 6s; }
+    .meteor:nth-child(8) { top: -10%; left: 60%; animation: meteor-fall 7.5s linear infinite; animation-delay: 7s; }
+
+    @keyframes meteor-fall { 0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; } 20% { transform: translateX(-600px) translateY(600px) rotate(-45deg); opacity: 0; } 100% { opacity: 0; } }
+</style>
+<!-- ========================================== -->
+<!-- 🚨 特效代码结束 -->
+<!-- ========================================== -->
+
+<div class="header">
+    <h1>校园二手闲置交易平台 - 后台管理</h1>
+    <div class="nav-group">
+        <a href="/admin/users">👥 用户管理</a>
+        <a href="/admin/goods">📦 物品审核</a>
+        <a href="/admin/categories">🏷️ 分类管理</a>
+        <a href="/goods/">🏠 返回前台</a>
+    </div>
+</div>
+
+<div class="content">
+    <!-- 饼图卡片 -->
+    <div class="card card-full">
+        <h2>📊 平台物品分类占比</h2>
+        <p class="info-text">当前登录管理员：<span th:text="${adminName}">admin</span></p>
+        <div id="pieChart"></div>
+    </div>
+
+    <!-- 折线图卡片：交易金额 -->
+    <div class="card">
+        <h2>💰 近7日交易金额趋势</h2>
+        <p class="info-text">展示平台每日订单成交总额</p>
+        <div id="amountChart"></div>
+    </div>
+
+    <!-- 折线图卡片：用户增长 -->
+    <div class="card">
+        <h2>👥 近7日用户增长趋势</h2>
+        <p class="info-text">展示平台每日新注册用户数</p>
+        <div id="userChart"></div>
+    </div>
+</div>
+
+<script>
+    // ================== 1. 初始化饼图 ==================
+    var pieChart = echarts.init(document.getElementById('pieChart'));
+    $.get("/admin/chartData", function (data) {
+        var option = {
+            color: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'],
+            tooltip: { trigger: 'item' },
+            legend: { orient: 'horizontal', bottom: '0', textStyle: { color: '#94a3b8' }, icon: 'circle' },
+            series: [{
+                name: '分类数量',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                center: ['50%', '45%'],
+                label: { show: true, color: '#e2e8f0' },
+                data: data
+            }]
+        };
+        pieChart.setOption(option);
+    });
+
+    // ================== 2. 初始化交易金额折线图 ==================
+    var amountChart = echarts.init(document.getElementById('amountChart'));
+    $.get("/admin/chartAmountData", function (data) {
+        var dates = [];
+        var amounts = [];
+        for (var i = 0; i < data.length; i++) {
+            dates.push(data[i].date);
+            amounts.push(data[i].amount);
+        }
+        var option = {
+            tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', boundaryGap: false, data: dates, axisLine: { lineStyle: { color: '#64748b' } } },
+            yAxis: { type: 'value', axisLine: { lineStyle: { color: '#64748b' } }, splitLine: { lineStyle: { color: '#334155' } } },
+            series: [{
+                name: '交易金额(元)',
+                type: 'line',
+                smooth: true,
+                data: amounts,
+                itemStyle: { color: '#10b981' },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(16, 185, 129, 0.5)' },
+                        { offset: 1, color: 'rgba(16, 185, 129, 0.1)' }
+                    ])
+                }
+            }]
+        };
+        amountChart.setOption(option);
+    });
+
+    // ================== 3. 初始化用户增长折线图 ==================
+    var userChart = echarts.init(document.getElementById('userChart'));
+    $.get("/admin/chartUserData", function (data) {
+        var dates = [];
+        var counts = [];
+        for (var i = 0; i < data.length; i++) {
+            dates.push(data[i].date);
+            counts.push(data[i].count);
+        }
+        var option = {
+            tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', boundaryGap: false, data: dates, axisLine: { lineStyle: { color: '#64748b' } } },
+            yAxis: { type: 'value', axisLine: { lineStyle: { color: '#64748b' } }, splitLine: { lineStyle: { color: '#334155' } } },
+            series: [{
+                name: '新增用户(人)',
+                type: 'line',
+                smooth: true,
+                data: counts,
+                itemStyle: { color: '#3b82f6' },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(59, 130, 246, 0.5)' },
+                        { offset: 1, color: 'rgba(59, 130, 246, 0.1)' }
+                    ])
+                }
+            }]
+        };
+        userChart.setOption(option);
+    });
+
+    // 窗口大小改变时自适应
+    window.addEventListener('resize', function() {
+        pieChart.resize();
+        amountChart.resize();
+        userChart.resize();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>我的订单 - 校园二手闲置交易平台</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* 注意：这里去掉原来的 background，让背后的星空透出来 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #e2e8f0; min-height: 100vh; position: relative; }
+
+        .navbar { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 0 40px; height: 64px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .navbar h1 { font-size: 20px; color: #fff; text-decoration: none; }
+        .nav-links a { text-decoration: none; color: rgba(255,255,255,0.7); margin-left: 20px; }
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; position: relative; z-index: 10; }
+        .title { font-size: 24px; color: #f8fafc; margin-bottom: 20px; font-weight: 600; }
+
+        /* 卡片改成毛玻璃质感，能隐约看到背后的星星 */
+        .order-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .order-info h4 { color: #f8fafc; font-size: 16px; margin-bottom: 8px; }
+        .order-info p { color: #94a3b8; font-size: 13px; margin-bottom: 5px; }
+        .price { color: #ef4444; font-weight: bold; font-size: 18px; }
+        .status { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; margin-left: 10px;}
+        .status-1 { background: rgba(59, 130, 246, 0.2); color: #3b82f6; } /* 已支付 */
+        .status-2 { background: rgba(16, 185, 129, 0.2); color: #10b981; } /* 已完成 */
+        .status-3 { background: rgba(239, 68, 68, 0.2); color: #ef4444; } /* 已取消 */
+
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; text-decoration: none; color: white; transition: all 0.2s; }
+        .btn-confirm { background: #10b981; margin-left: 10px; }
+        .btn-confirm:hover { background: #059669; }
+        .btn-cancel { background: rgba(239, 68, 68, 0.8); margin-left: 10px; }
+        .btn-cancel:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+
+<!-- ========================================== -->
+<!-- 🚨 星空特效层（放在body内，页面最底层） -->
+<!-- ========================================== -->
+<div id="galaxy-bg" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);">
+    <!-- 繁星层 -->
+    <div class="stars star-small"></div>
+    <div class="stars star-medium"></div>
+    <div class="stars star-large"></div>
+    <!-- 流星雨层 -->
+    <div class="meteors-layer">
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+    </div>
+</div>
+<style>
+    .stars { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: transparent; }
+    .star-small { width: 1px; height: 1px; box-shadow: 10vw 20vh #FFF, 30vw 40vh #FFF, 50vw 60vh #FFF, 70vw 80vh #FFF, 90vw 10vh #FFF, 20vw 70vh #FFF, 40vw 90vh #FFF, 60vw 30vh #FFF, 80vw 50vh #FFF, 15vw 55vh #FFF, 35vw 15vh #FFF, 55vw 75vh #FFF, 75vw 25vh #FFF, 95vw 65vh #FFF, 5vw 85vh #FFF; animation: twinkle-slow 4s infinite alternate; }
+    .star-medium { width: 2px; height: 2px; box-shadow: 15vw 25vh #FFF, 35vw 75vh #FFF, 65vw 15vh #FFF, 85vw 55vh #FFF, 5vw 45vh #FFF, 25vw 85vh #FFF, 55vw 35vh #FFF, 75vw 65vh #FFF, 95vw 5vh #FFF, 45vw 95vh #FFF; animation: twinkle-medium 3s infinite alternate; }
+    .star-large { width: 3px; height: 3px; filter: drop-shadow(0 0 6px #fff); box-shadow: 20vw 50vh #FFF, 50vw 10vh #FFF, 80vw 70vh #FFF, 10vw 80vh #FFF, 70vw 20vh #FFF, 40vw 30vh #FFF, 90vw 40vh #FFF, 30vw 90vh #FFF; animation: twinkle-fast 2s infinite alternate; }
+    @keyframes twinkle-slow { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+    @keyframes twinkle-medium { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+    @keyframes twinkle-fast { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 1; transform: scale(1.5); } }
+
+    .meteor { position: absolute; width: 160px; height: 2px; opacity: 0; transform: rotate(-45deg); }
+    .meteor:nth-child(1), .meteor:nth-child(2), .meteor:nth-child(3) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+    .meteor:nth-child(4), .meteor:nth-child(5), .meteor:nth-child(6) { background: linear-gradient(90deg, #e0c3fc, rgba(224,195,252,0)); box-shadow: 0 0 10px rgba(224,195,252,0.8); }
+    .meteor:nth-child(7), .meteor:nth-child(8), .meteor:nth-child(9) { background: linear-gradient(90deg, #8ec5fc, rgba(142,197,252,0)); box-shadow: 0 0 10px rgba(142,197,252,0.8); }
+    .meteor:nth-child(10) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
+    .meteor:nth-child(1) { top: -10%; left: 10%; animation: meteor-fall 4s linear infinite; animation-delay: 0s; }
+    .meteor:nth-child(2) { top: -10%; left: 40%; animation: meteor-fall 6s linear infinite; animation-delay: 2s; }
+    .meteor:nth-child(3) { top: -10%; left: 70%; animation: meteor-fall 5s linear infinite; animation-delay: 4s; }
+    .meteor:nth-child(4) { top: -10%; left: 20%; animation: meteor-fall 7s linear infinite; animation-delay: 1s; }
+    .meteor:nth-child(5) { top: -10%; left: 50%; animation: meteor-fall 4.5s linear infinite; animation-delay: 3s; }
+    .meteor:nth-child(6) { top: -10%; left: 80%; animation: meteor-fall 8s linear infinite; animation-delay: 5s; }
+    .meteor:nth-child(7) { top: -10%; left: 30%; animation: meteor-fall 5.5s linear infinite; animation-delay: 6s; }
+    .meteor:nth-child(8) { top: -10%; left: 60%; animation: meteor-fall 7.5s linear infinite; animation-delay: 7s; }
+    .meteor:nth-child(9) { top: -10%; left: 90%; animation: meteor-fall 6.5s linear infinite; animation-delay: 8s; }
+    .meteor:nth-child(10) { top: -10%; left: 45%; animation: meteor-fall 9s linear infinite; animation-delay: 1.5s; }
+    @keyframes meteor-fall { 0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; } 20% { transform: translateX(-600px) translateY(600px) rotate(-45deg); opacity: 0; } 100% { opacity: 0; } }
+</style>
+
+<div class="navbar">
+    <a href="/goods/" style="text-decoration: none;"><h1>校园二手闲置交易平台</h1></a>
+    <div class="nav-links">
+        <a href="/goods/">返回首页</a>
+        <a href="/user/profile">个人中心</a>
+        <a href="/logout">退出登录</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="alert alert-error" th:if="${error}" th:text="${error}" style="background:rgba(239,68,68,0.2); color:#fca5a5; padding:12px; border-radius:8px; margin-bottom:20px;"></div>
+    <div class="alert alert-success" th:if="${success}" th:text="${success}" style="background:rgba(16,185,129,0.2); color:#6ee7b7; padding:12px; border-radius:8px; margin-bottom:20px;"></div>
+
+    <h2 class="title">📦 我买到的订单</h2>
+    <div th:if="${buyList.size() == 0}" style="color: #64748b; margin-bottom: 40px;">暂无购买记录~</div>
+    <div th:each="item : ${buyList}" class="order-card" th:if="${buyList.size() > 0}">
+        <div class="order-info">
+            <h4 th:text="${item.goodsTitle}">物品标题</h4>
+            <p>订单号：<span th:text="${item.order.orderNo}"></span></p>
+            <p>卖家：<span th:text="${item.otherName}"></span></p>
+            <p>下单时间：<span th:text="${#dates.format(item.order.createTime, 'yyyy-MM-dd HH:mm')}"></span></p>
+        </div>
+        <div style="text-align: right;">
+            <div class="price">￥<span th:text="${item.order.amount}"></span></div>
+            <div style="margin-top: 10px;">
+                <span th:if="${item.order.status == 1}" class="status status-1">待发货/交易中</span>
+                <span th:if="${item.order.status == 2}" class="status status-2">已完成</span>
+                <span th:if="${item.order.status == 3}" class="status status-3">已取消</span>
+
+                <!-- 🚨 买家可以取消未完成的订单 -->
+                <form th:if="${item.order.status == 1}" action="/order/cancel" method="post" style="display:inline;" onsubmit="return confirm('确定要取消该订单吗？物品将重新上架。');">
+                    <input type="hidden" name="orderId" th:value="${item.order.id}">
+                    <button type="submit" class="btn btn-cancel">取消订单</button>
+                </form>
+
+                <!-- 评价按钮 (已完成且未评价过) -->
+                <button th:if="${item.order.status == 2 and !item.hasReviewed}" type="button" class="btn btn-confirm" th:onclick="openReview([[${item.order.id}]])">去评价</button>
+                <span th:if="${item.order.status == 2 and item.hasReviewed}" style="color:#64748b; font-size:12px; margin-left:10px;">已评价</span>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="title" style="margin-top: 50px;">💰 我卖出的订单</h2>
+    <div th:if="${sellList.size() == 0}" style="color: #64748b;">暂无卖出记录~</div>
+    <div th:each="item : ${sellList}" class="order-card" th:if="${sellList.size() > 0}">
+        <div class="order-info">
+            <h4 th:text="${item.goodsTitle}">物品标题</h4>
+            <p>订单号：<span th:text="${item.order.orderNo}"></span></p>
+            <p>买家：<span th:text="${item.otherName}"></span></p>
+            <p>下单时间：<span th:text="${#dates.format(item.order.createTime, 'yyyy-MM-dd HH:mm')}"></span></p>
+        </div>
+        <div style="text-align: right;">
+            <div class="price">￥<span th:text="${item.order.amount}"></span></div>
+            <div style="margin-top: 10px;">
+                <span th:if="${item.order.status == 1}" class="status status-1">待确认交易</span>
+                <span th:if="${item.order.status == 2}" class="status status-2">已完成</span>
+                <span th:if="${item.order.status == 3}" class="status status-3">已取消</span>
+
+                <!-- 🚨 卖家可以确认交易完成 -->
+                <form th:if="${item.order.status == 1}" action="/order/confirm" method="post" style="display:inline;">
+                    <input type="hidden" name="orderId" th:value="${item.order.id}">
+                    <button type="submit" class="btn btn-confirm" style="margin-left: 0;">确认交易完成</button>
+                </form>
+
+                <!-- 🚨 新增：卖家可以取消该订单（拒绝买家） -->
+                <form th:if="${item.order.status == 1}" action="/order/cancel" method="post" style="display:inline;" onsubmit="return confirm('确定要拒绝该买家并取消此订单吗？物品将重新上架。');">
+                    <input type="hidden" name="orderId" th:value="${item.order.id}">
+                    <button type="submit" class="btn btn-cancel" style="margin-left: 5px;">取消订单</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 评价弹窗 -->
+<div id="reviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="background:#1e293b; width:400px; margin:100px auto; padding:20px; border-radius:12px; color:white;">
+        <h3>⭐ 评价卖家</h3>
+        <form action="/order/review" method="post" style="margin-top:20px;">
+            <input type="hidden" name="orderId" id="reviewOrderId">
+            <div style="margin-bottom:15px;">
+                <label>评分：</label>
+                <select name="rating" style="padding:5px; border-radius:5px; color:black; width: 100%; margin-top: 8px;" required>
+                    <option value="5">⭐⭐⭐⭐⭐ 非常满意</option>
+                    <option value="4">⭐⭐⭐⭐ 满意</option>
+                    <option value="3">⭐⭐⭐ 一般</option>
+                    <option value="2">⭐⭐ 不满意</option>
+                    <option value="1">⭐ 极差</option>
+                </select>
+            </div>
+            <div style="margin-bottom:20px;">
+                <textarea name="content" placeholder="分享您的交易体验..." style="width:100%; height:80px; padding:10px; border-radius:8px; color:black;" required></textarea>
+            </div>
+            <div style="text-align:right;">
+                <button type="button" onclick="closeReview()" style="padding:8px 16px; border-radius:6px; cursor:pointer;">取消</button>
+                <button type="submit" style="background:#10b981; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer;">提交评价</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openReview(orderId) {
+        document.getElementById('reviewOrderId').value = orderId;
+        document.getElementById('reviewModal').style.display = 'block';
+    }
+    function closeReview() {
+        document.getElementById('reviewModal').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>

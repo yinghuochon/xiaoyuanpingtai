@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑闲置物品 - 校园二手闲置交易平台</title>
+    <style>
+        * { box-sizing: border-box !important; margin: 0 !important; padding: 0 !important; }
+        html, body {
+            min-height: 100vh !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+            background: linear-gradient(135deg, #1e3a8a 0%, #4c1d95 100%) !important;
+            display: flex !important; justify-content: center !important; align-items: center !important;
+        }
+        .publish-card {
+            background: #ffffff !important; border-radius: 20px !important;
+            padding: 40px 50px !important; width: 100% !important; max-width: 800px !important;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4) !important; z-index: 10 !important;
+        }
+        .header { text-align: center !important; margin-bottom: 30px !important; }
+        .header h2 { font-size: 28px !important; color: #0f172a !important; font-weight: 800 !important; }
+        .form-group { margin-bottom: 22px !important; display: block !important; }
+        .form-group label { display: block !important; margin-bottom: 10px !important; color: #334155 !important; font-size: 15px !important; font-weight: 600 !important; }
+        .form-control {
+            width: 100% !important; padding: 14px 18px !important; border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important; font-size: 15px !important; outline: none !important;
+            background: #f8fafc !important; color: #1e293b !important;
+        }
+        .form-control:focus { border-color: #3b82f6 !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15) !important; }
+        textarea.form-control { resize: vertical !important; min-height: 100px !important; }
+        .btn-submit {
+            width: 100% !important; padding: 16px !important; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+            color: white !important; border: none !important; border-radius: 10px !important; font-size: 17px !important;
+            font-weight: 600 !important; cursor: pointer !important; margin-top: 10px !important;
+        }
+        .btn-back { display: block !important; text-align: center !important; margin-top: 20px !important; text-decoration: none !important; color: #64748b !important; font-size: 14px !important; }
+    </style>
+</head>
+<body>
+<div class="publish-card">
+    <div class="header">
+        <h2>✏️ 编辑闲置物品</h2>
+    </div>
+    <!-- 注意：这里不要改 enctype，因为如果只是改文字价格，不需要重新传图 -->
+    <form action="/goods/edit" method="post">
+        <!-- 隐藏域，必须传 ID -->
+        <input type="hidden" name="id" th:value="${goods.id}">
+
+        <div class="form-group">
+            <label>物品标题</label>
+            <input type="text" name="title" class="form-control" th:value="${goods.title}" required>
+        </div>
+        <div class="form-group">
+            <label>物品描述</label>
+            <textarea name="description" class="form-control" required th:text="${goods.description}"></textarea>
+        </div>
+        <div class="form-group">
+            <label>物品价格 (￥)</label>
+            <input type="number" step="0.01" name="price" class="form-control" th:value="${goods.price}" required>
+        </div>
+        <div class="form-group">
+            <label>物品分类</label>
+            <select name="categoryId" class="form-control" required style="background: #f8fafc; color: #1e293b;">
+                <option th:each="c : ${categoryList}" th:value="${c.id}" th:text="${c.name}" th:selected="${c.id == goods.categoryId}"></option>
+            </select>
+        </div>
+        <button type="submit" class="btn-submit">保存修改</button>
+        <a href="/user/profile" class="btn-back">← 放弃修改并返回</a>
+    </form>
+</div>
+</body>
+</html>

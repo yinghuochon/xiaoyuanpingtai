@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>我的购物车 - 校园二手闲置交易平台</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); background-attachment: fixed; color: #e2e8f0; min-height: 100vh; }
+        .navbar { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 0 40px; height: 64px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 20px; color: #fff; text-decoration: none; }
+        .nav-links a { text-decoration: none; color: rgba(255,255,255,0.7); margin-left: 20px; }
+
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        .title { font-size: 24px; color: #f8fafc; margin-bottom: 20px; font-weight: 600; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+        .alert-error { background: rgba(239, 68,68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }
+        .alert-success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981; }
+
+        .cart-item { background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 20px; margin-bottom: 15px; display: flex; align-items: center; border-left: 4px solid #3b82f6; gap: 15px; }
+
+        /* 自定义复选框 */
+        .cart-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6; }
+
+        .cart-info { flex: 1; }
+        .cart-info h4 { color: #f8fafc; font-size: 18px; margin-bottom: 8px; }
+        .cart-info .price { color: #ef4444; font-weight: bold; font-size: 20px; }
+
+        .action-group { display: flex; gap: 10px; align-items: center; }
+        .btn-buy { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-buy:hover { transform: translateY(-2px); }
+        .btn-remove { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; transition: 0.2s; }
+        .btn-remove:hover { background: #ef4444; color: white; }
+
+        /* 底部结算栏 */
+        .checkout-bar { background: rgba(30, 41, 59, 0.95); position: sticky; bottom: 20px; border-radius: 12px; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -4px 20px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); margin-top: 30px; }
+        .checkout-btn { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; padding: 12px 40px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        .checkout-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6); }
+        .empty { text-align: center; color: #64748b; margin-top: 100px; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <a href="/goods/"><h1>校园二手闲置交易平台</h1></a>
+    <div class="nav-links">
+        <a href="/goods/">返回首页</a>
+        <a href="/user/profile">个人中心</a>
+    </div>
+</div>
+
+<div class="container">
+    <h2 class="title">🛒 我的购物车 (Redis 缓存)</h2>
+
+    <!-- 提示信息 -->
+    <div class="alert alert-error" th:if="${error}" th:text="${error}"></div>
+    <div class="alert alert-success" th:if="${success}" th:text="${success}"></div>
+
+    <div th:if="${cartGoods.size() == 0}" class="empty">购物车空空如也，快去首页逛逛吧~</div>
+
+    <!-- 结算表单 -->
+    <form id="checkoutForm" action="/cart/checkout" method="post">
+        <div th:each="goods : ${cartGoods}" class="cart-item">
+            <!-- 🚨 复选框：只有状态为 1 的才允许勾选 -->
+            <input type="checkbox" name="goodsIds" th:value="${goods.id}" class="cart-checkbox" th:disabled="${goods.status != 1}">
+
+            <div class="cart-info">
+                <h4 th:text="${goods.title}">商品标题</h4>
+                <div class="price">￥<span th:text="${goods.price}"></span></div>
+            </div>
+
+            <div class="action-group">
+                <a th:href="@{/goods/detail/{id}(id=${goods.id})}" style="color:#3b82f6; text-decoration:none; font-size: 14px;">查看详情</a>
+                <a th:href="@{/cart/remove/{id}(id=${goods.id})}" class="btn-remove">移除</a>
+            </div>
+        </div>
+
+        <!-- 底部合并结算栏 -->
+        <div class="checkout-bar" th:if="${cartGoods.size() > 0}">
+            <div style="color: #cbd5e1; font-size: 14px;">
+                请勾选需要结算的商品（已售出的商品无法勾选）
+            </div>
+            <!-- 🚨 合并结算按钮 -->
+            <button type="button" class="checkout-btn" onclick="submitCheckout()">合并购买选中商品</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function submitCheckout() {
+        // 获取所有被选中的复选框
+        const checkedBoxes = document.querySelectorAll('input[name="goodsIds"]:checked');
+        if (checkedBoxes.length === 0) {
+            alert("请先勾选需要合并购买的商品！");
+            return;
+        }
+        // 确认提示
+        if (confirm("确定要合并购买选中的 " + checkedBoxes.length + " 件商品吗？")) {
+            document.getElementById('checkoutForm').submit();
+        }
+    }
+</script>
+
+</body>
+</html>

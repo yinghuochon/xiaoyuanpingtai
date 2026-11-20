@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>分类管理 - 后台</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .header { background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 24px; color: #fff; }
+        .header a { color: #fff; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 6px; }
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .card { background: #1e293b; border-radius: 16px; padding: 30px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        .add-form { display: flex; gap: 15px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+        .add-form input { flex: 1; padding: 12px 15px; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; outline: none; }
+        .add-form input:focus { border-color: #3b82f6; }
+        .add-form button { background: #10b981; color: white; border: none; padding: 0 30px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { color: #94a3b8; font-size: 14px; }
+        td { color: #e2e8f0; font-size: 15px; }
+        .btn-delete { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        .btn-delete:hover { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>分类管理</h1>
+    <div>
+        <a href="/admin/users" style="margin-right: 15px;">用户管理</a>
+        <a href="/admin/goods" style="margin-right: 15px;">物品审核</a>
+        <a href="/admin/index">返回数据看板</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <!-- 添加分类表单 -->
+        <form action="/admin/category/add" method="post" class="add-form">
+            <input type="text" name="name" placeholder="请输入新分类名称（如：闲置衣物）" required>
+            <button type="submit">添加分类</button>
+        </form>
+
+        <!-- 分类列表 -->
+        <table>
+            <thead>
+            <tr>
+                <th>分类 ID</th>
+                <th>分类名称</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${categories}">
+                <td th:text="${c.id}">1</td>
+                <td th:text="${c.name}">数码产品</td>
+                <td>
+                    <form action="/admin/category/delete" method="post" onsubmit="return confirm('确定要删除这个分类吗？');" style="display:inline;">
+                        <input type="hidden" name="id" th:value="${c.id}">
+                        <button type="submit" class="btn-delete">删除</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

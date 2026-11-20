@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${goods.title} + ' - 物品详情'">物品详情</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* 🚨 核心修改：加入深蓝渐变 + 动态星空背景 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            background-attachment: fixed;
+            color: #e2e8f0;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* 🚨 星空闪烁动画核心代码 */
+        @keyframes twinkle {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.3; }
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            background-image:
+                    radial-gradient(1.5px 1.5px at 20px 30px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(1.5px 1.5px at 40px 70px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2.5px 2.5px at 160px 120px, rgba(255,255,255,0.8), rgba(0,0,0,0)),
+                    radial-gradient(1.5px 1.5px at 200px 60px, #fff, rgba(0,0,0,0)),
+                    radial-gradient(2px 2px at 250px 150px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 300px 300px;
+            animation: twinkle 4s infinite alternate;
+        }
+
+        /* 顶部导航栏 */
+        .navbar { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 0 40px; height: 64px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .navbar h1 { font-size: 20px; color: #fff; letter-spacing: 1px; font-weight: 600; text-decoration: none; }
+        .nav-links { display: flex; gap: 20px; align-items: center; font-size: 14px; }
+        .nav-links span { color: rgba(255,255,255,0.8); }
+        .nav-links a { text-decoration: none; color: rgba(255,255,255,0.6); transition: color 0.2s; }
+        .nav-links a:hover { color: #fff; }
+        .nav-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; margin-right: 5px; vertical-align: middle; }
+        .nav-avatar-text { width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; color: white; display: inline-flex; justify-content: center; align-items: center; font-weight: bold; font-size: 14px; margin-right: 5px; vertical-align: middle; }
+
+        /* 🚨 下拉菜单样式 */
+        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #1e293b; min-width: 120px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5); border-radius: 8px; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
+        .dropdown-content a { color: #cbd5e1 !important; padding: 12px 16px; text-decoration: none; display: block; font-size: 13px; transition: background 0.2s; margin-left: 0 !important; }
+        .dropdown-content a:hover { background-color: rgba(59, 130, 246, 0.2); color: #fff !important; }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .back-link { display: inline-block; text-decoration: none; color: #94a3b8; margin-bottom: 20px; font-size: 14px; transition: color 0.2s; }
+        .back-link:hover { color: #fff; }
+
+        /* 左右分栏 */
+        .detail-layout { display: flex; gap: 30px; align-items: flex-start; }
+
+        /* 左侧：商品主图和信息 */
+        .main-content { flex: 1; min-width: 0; }
+        .goods-info-card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 30px; }
+        .goods-title { font-size: 28px; color: #f8fafc; font-weight: 700; margin-bottom: 15px; line-height: 1.4; }
+        .goods-price { font-size: 36px; color: #ef4444; font-weight: bold; margin-bottom: 20px; letter-spacing: -1px; }
+        .goods-price small { font-size: 20px; }
+        .goods-desc { color: #cbd5e1; font-size: 15px; line-height: 1.8; background: rgba(15, 23, 42, 0.5); padding: 20px; border-radius: 12px; margin-bottom: 25px; white-space: pre-wrap; }
+
+        /* 图片画廊 */
+        .image-gallery { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px; }
+        .image-gallery img { width: 180px; height: 180px; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); transition: transform 0.3s, border-color 0.3s; cursor: zoom-in; }
+        .image-gallery img:hover { transform: scale(1.05); border-color: #3b82f6; }
+
+        /* 右侧：卖家信息卡片 */
+        .sidebar { width: 320px; flex-shrink: 0; position: sticky; top: 90px; }
+        .seller-card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; }
+
+        /* 彻底解决头像放大问题 */
+        .seller-avatar-img { width: 80px !important; height: 80px !important; border-radius: 50% !important; object-fit: cover !important; border: 3px solid #60a5fa !important; margin: 0 auto 15px auto !important; display: block !important; }
+        .seller-avatar-text { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 15px auto; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: bold; background: #3b82f6; color: white; border: 3px solid #60a5fa; }
+
+        .seller-name { font-size: 20px; color: #f8fafc; font-weight: 600; margin-bottom: 5px; }
+        .seller-role { display: inline-block; background: rgba(245, 158, 11, 0.2); color: #f59e0b; padding: 4px 10px; border-radius: 6px; font-size: 12px; margin-bottom: 15px; border: 1px solid rgba(245,158,11,0.3); }
+
+        /* 信用评分展示 */
+        .credit-box { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 15px; margin-bottom: 20px; border: 1px dashed rgba(255,255,255,0.1); cursor: pointer; transition: all 0.2s; }
+        .credit-box:hover { background: rgba(59, 130, 246, 0.1); border-color: #60a5fa; }
+        .credit-score { font-size: 28px; color: #f59e0b; font-weight: bold; margin-bottom: 5px; }
+        .credit-text { font-size: 13px; color: #94a3b8; }
+        .credit-box:hover .credit-text { color: #60a5fa; }
+
+        /* 操作按钮区 */
+        .action-btns { display: flex; flex-direction: column; gap: 12px; }
+        .btn { width: 100%; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; border: none; transition: all 0.3s; display: flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; }
+        .btn-chat { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+        .btn-chat:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+        .btn-cart { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
+        .btn-cart:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4); }
+        .btn-buy { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+        .btn-buy:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4); }
+
+        /* 留言区（终极美化版） */
+        .comment-section { background: rgba(30, 41, 59, 0.8); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.05); }
+        .comment-title { font-size: 20px; color: #f8fafc; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+        /* 基础留言卡片 */
+        .comment-item { background: rgba(15, 23, 42, 0.6); padding: 15px 20px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid #3b82f6; display: flex; gap: 15px; position: relative; transition: all 0.2s; }
+        .comment-item:hover { background: rgba(15, 23, 42, 0.8); }
+
+        /* 嵌套回复的终极美化 */
+        .comment-item.nested-reply { margin-left: 50px; border-left: none; background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(255,255,255,0.05); }
+
+        /* 嵌套回复的连接虚线和小拐角 */
+        .comment-item.nested-reply::before { content: ''; position: absolute; left: -30px; top: 30px; width: 30px; height: 30px; border-left: 2px dashed #64748b; border-bottom: 2px dashed #64748b; border-bottom-left-radius: 10px; }
+
+        .comment-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #60a5fa; flex-shrink: 0; }
+        .comment-avatar-text { width: 40px; height: 40px; border-radius: 50%; background: #3b82f6; color: white; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 16px; flex-shrink: 0; }
+        .comment-body { flex: 1; }
+        .comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .comment-user { color: #60a5fa; font-weight: 600; }
+        .comment-time { color: #64748b; }
+        .comment-content { color: #e2e8f0; font-size: 14px; line-height: 1.6; }
+
+        /* 🚨 回复按钮样式 */
+        .reply-btn {
+            display: inline-block;
+            margin-top: 8px;
+            color: #60a5fa;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .reply-btn:hover { text-decoration: underline; color: #3b82f6; }
+
+        .comment-form textarea { width: 100%; padding: 15px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #fff; font-size: 14px; outline: none; transition: border-color 0.3s; resize: vertical; min-height: 100px; }
+        .comment-form textarea:focus { border-color: #3b82f6; background: rgba(15, 23, 42, 0.9); }
+        .btn-submit { display: inline-block; margin-top: 15px; padding: 12px 30px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-submit:hover { background: #2563eb; transform: translateY(-2px); }
+
+        /* 🚨 弹窗基础样式 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #1e293b; width: 500px; max-height: 80vh; border-radius: 16px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .modal-header h3 { font-size: 20px; color: #f8fafc; }
+        .close-btn { background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer; transition: color 0.2s; }
+        .close-btn:hover { color: #ef4444; }
+
+        .review-list { overflow-y: auto; padding-right: 10px; display: flex; flex-direction: column; gap: 15px; }
+        .review-list::-webkit-scrollbar { width: 6px; }
+        .review-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .review-item { background: rgba(15, 23, 42, 0.5); padding: 15px; border-radius: 10px; border-left: 3px solid #f59e0b; }
+        .review-item-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .review-stars { color: #f59e0b; margin-bottom: 8px; }
+        .review-content { color: #cbd5e1; font-size: 14px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <a href="/goods/" style="text-decoration: none;"><h1>校园二手闲置交易平台</h1></a>
+    <div class="nav-links">
+        <div th:if="${session.loginUser != null}" style="display: flex; gap: 20px; align-items: center;">
+
+            <!-- 个人中心下拉菜单 -->
+            <div class="dropdown" style="position: relative; display: inline-block;">
+                <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 5px 0;">
+                    <img th:if="${session.loginUser.avatar != null and session.loginUser.avatar != ''}" th:src="${session.loginUser.avatar}" class="nav-avatar" />
+                    <div th:if="${session.loginUser.avatar == null or session.loginUser.avatar == ''}" class="nav-avatar-text" th:text="${#strings.substring(session.loginUser.username, 0, 1).toUpperCase()}">A</div>
+                    <span>欢迎您，<b th:text="${session.loginUser.username}"></b> ▾</span>
+                </div>
+                <div class="dropdown-content">
+                    <a href="/user/profile">个人中心</a>
+                    <a href="/order/my">我的订单</a>
+                    <a href="/logout" style="color: #ef4444;">退出登录</a>
+                </div>
+            </div>
+
+            <a href="/user/messages" style="position: relative; display: flex; align-items: center; color: #ffd04b; font-weight: bold;">
+                📬 消息
+                <span id="unreadBadge" style="display: none; position: absolute; top: -8px; right: -15px; background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px;">0</span>
+            </a>
+
+            <a href="/cart/my" style="color: #ffd04b; font-weight: bold;">🛒 购物车</a>
+
+            <a th:if="${session.loginUser.role == 'SELLER' or session.loginUser.role == 'ADMIN'}" href="/goods/publish">+ 发布闲置</a>
+        </div>
+        <div th:if="${session.loginUser == null}">
+            <a href="/login">请登录</a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <a href="/goods/" class="back-link">← 返回首页</a>
+
+    <div class="detail-layout">
+        <!-- 左侧：商品主区 -->
+        <div class="main-content">
+            <div class="goods-info-card">
+                <h1 class="goods-title" th:text="${goods.title}">物品标题</h1>
+                <div class="goods-price"><small>￥</small><span th:text="${goods.price}">0.00</span></div>
+
+                <div class="goods-desc" th:text="${goods.description}">这里是物品描述...</div>
+
+                <div class="image-gallery">
+                    <img th:each="img : ${images}" th:src="${img.url}" alt="物品图片" />
+                </div>
+            </div>
+
+            <!-- 留言区 -->
+            <div class="comment-section">
+                <h3 class="comment-title">💬 留言咨询 (<span th:text="${messages.size()}">0</span> 条)</h3>
+
+                <div th:each="msg : ${messages}" class="comment-item"
+                     th:classappend="${#strings.startsWith(msg.content, '回复 @')} ? 'nested-reply' : ''">
+
+                    <img th:if="${msg.user != null and msg.user.avatar != null and msg.user.avatar != ''}" th:src="${msg.user.avatar}" class="comment-avatar" />
+                    <div th:if="${msg.user == null or msg.user.avatar == null or msg.user.avatar == ''}" class="comment-avatar-text" th:text="${msg.user != null ? #strings.substring(msg.user.username, 0, 1).toUpperCase() : '匿'}">A</div>
+
+                    <div class="comment-body">
+                        <div class="comment-header">
+                            <span class="comment-user" th:text="${msg.user != null ? (msg.user.nickname != null ? msg.user.nickname : msg.user.username) : '匿名用户'}">用户昵称</span>
+                            <span class="comment-time" th:text="${#dates.format(msg.createTime, 'yyyy-MM-dd HH:mm')}">时间</span>
+                        </div>
+                        <div class="comment-content" th:text="${msg.content}">留言内容</div>
+
+                        <!-- 🚨 恢复：回复按钮 -->
+                        <div style="margin-top: 8px; text-align: right;">
+                            <a href="javascript:void(0);"
+                               th:data-username="${msg.user != null ? msg.user.username : '匿名'}"
+                               onclick="replyToUser(this.dataset.username)"
+                               class="reply-btn">↩ 回复</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${messages.size() == 0}" style="color: #64748b; text-align: center; padding: 20px;">暂无留言，快来抢沙发吧！</div>
+
+                <!-- 留言表单 -->
+                <div class="comment-form">
+                    <form action="/goods/message/add" method="post">
+                        <input type="hidden" name="goodsId" th:value="${goods.id}">
+                        <input type="hidden" name="replyTo" id="replyToInput" value="">
+
+                        <!-- 🚨 恢复：回复提示框 -->
+                        <div id="replyHint" style="display: none; margin-bottom: 10px; color: #60a5fa; font-size: 14px; background: rgba(59, 130, 246, 0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                            正在回复 <b id="replyName"></b> <a href="javascript:void(0);" onclick="cancelReply()" style="color: #ef4444; margin-left: 10px; text-decoration: none;">取消回复</a>
+                        </div>
+
+                        <textarea name="content" id="msgInput" placeholder="请输入你的留言..." required></textarea>
+                        <button type="submit" class="btn-submit">提交留言</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：卖家信息与操作面板 -->
+        <div class="sidebar">
+            <div class="seller-card">
+                <img th:if="${seller != null and seller.avatar != null and seller.avatar != ''}" th:src="${seller.avatar}" class="seller-avatar-img" />
+                <div th:if="${seller == null or seller.avatar == null or seller.avatar == ''}" class="seller-avatar-text" th:text="${seller != null ? #strings.substring(seller.username, 0, 1).toUpperCase() : '卖'}">A</div>
+
+                <div class="seller-name" th:text="${seller != null ? (seller.nickname != null ? seller.nickname : seller.username) : '神秘卖家'}">卖家昵称</div>
+                <div class="seller-role" th:if="${seller != null and seller.role == 'SELLER'}">认证卖家</div>
+                <div class="seller-role" th:if="${seller != null and seller.role == 'USER'}" style="background: rgba(59,130,246,0.2); color: #60a5fa; border-color: rgba(59,130,246,0.3);">普通用户</div>
+
+                <div class="credit-box" th:if="${seller != null}" th:onclick="openReviewModal()">
+                    <div class="credit-score">⭐ <span th:text="${seller.ratingAvg != null ? seller.ratingAvg : '5.0'}"></span></div>
+                    <div class="credit-text">卖家信用分 (<span th:text="${seller.reviewCount != null ? seller.reviewCount : '0'}"></span> 条评价) <br><span style="font-size:12px; color:#60a5fa;">点击查看评价详情</span></div>
+                    <input type="hidden" id="sellerIdHidden" th:value="${seller.id}">
+                </div>
+
+                <div class="action-btns">
+                    <div th:if="${session.loginUser != null and session.loginUser.id != goods.userId and goods.status == 1}">
+                        <a th:href="@{/chat/room/{goodsId}/{sellerId}(goodsId=${goods.id}, sellerId=${goods.userId})}" class="btn btn-chat">💬 联系卖家</a>
+                    </div>
+                    <div th:if="${session.loginUser != null and session.loginUser.id != goods.userId and goods.status == 1}">
+                        <a th:href="@{/cart/add/{id}(id=${goods.id})}" class="btn btn-cart">🛒 加入购物车</a>
+                    </div>
+
+                    <div th:if="${session.loginUser != null and session.loginUser.id != goods.userId and goods.status == 1}">
+                        <button type="button" class="btn btn-buy" style="width: 100%;" onclick="openPayModal()">⚡ 立即购买</button>
+                    </div>
+
+                    <div th:if="${goods.status != 1}" style="text-align: center; color: #ef4444; font-weight: bold; padding: 10px;">
+                        该物品已下架或已售出
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 评价详情弹窗 -->
+<div class="modal-overlay" id="reviewModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>💬 卖家历史评价</h3>
+            <button class="close-btn" onclick="closeReviewModal()">×</button>
+        </div>
+        <div class="review-list" id="reviewList"></div>
+    </div>
+</div>
+
+<!-- 模拟支付弹窗 -->
+<div class="modal-overlay" id="payModal">
+    <div class="modal-content" style="width: 350px; text-align: center; padding: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: #f8fafc; font-size: 18px; margin: 0;">扫码支付</h3>
+            <button class="close-btn" onclick="closePayModal()" style="font-size: 20px; color: #94a3b8; background: none; border: none; cursor: pointer;">×</button>
+        </div>
+
+        <div style="font-size: 28px; color: #ef4444; font-weight: bold; margin-bottom: 20px;">
+            ￥<span th:text="${goods.price}"></span>
+        </div>
+
+        <div style="background: white; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 20px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=CampusTradePay" alt="二维码" style="width: 150px; height: 150px;">
+        </div>
+
+        <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px;">请使用手机扫码完成支付 (演示环境)</p>
+
+        <form id="realBuyForm" action="/goods/buy" method="post" style="display: none;">
+            <input type="hidden" name="goodsId" th:value="${goods.id}">
+        </form>
+
+        <button type="button" class="btn btn-buy" style="width: 100%;" onclick="confirmPay()">我已完成支付</button>
+    </div>
+</div>
+
+<script>
+    // ================= 1. 恢复：回复功能的 JS =================
+    function replyToUser(username) {
+        document.getElementById('replyToInput').value = username;
+        document.getElementById('replyName').innerText = username;
+        document.getElementById('replyHint').style.display = 'block';
+        const msgInput = document.getElementById('msgInput');
+        msgInput.value = "@" + username + " ";
+        msgInput.focus();
+        msgInput.setSelectionRange(msgInput.value.length, msgInput.value.length);
+    }
+
+    function cancelReply() {
+        document.getElementById('replyToInput').value = '';
+        document.getElementById('replyHint').style.display = 'none';
+        document.getElementById('msgInput').value = '';
+    }
+
+    // ================= 2. 评价弹窗逻辑 =================
+    function openReviewModal() {
+        const sellerId = document.getElementById('sellerIdHidden').value;
+        const modal = document.getElementById('reviewModal');
+        const list = document.getElementById('reviewList');
+
+        modal.style.display = 'flex';
+        list.innerHTML = '<div style="color:#94a3b8; text-align:center; padding: 20px;">加载中...</div>';
+
+        fetch('/goods/seller/reviews/' + sellerId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length === 0) {
+                    list.innerHTML = '<div style="color:#64748b; text-align:center; padding: 20px;">该卖家暂时还没有收到评价哦~</div>';
+                    return;
+                }
+
+                let html = '';
+                data.forEach(review => {
+                    let stars = '';
+                    for(let i=0; i<review.rating; i++) { stars += '⭐'; }
+                    let date = new Date(review.createTime).toLocaleDateString();
+
+                    html += `
+                        <div class="review-item">
+                            <div class="review-item-header">
+                                <span style="color:#60a5fa; font-weight:bold;">买家评价</span>
+                                <span style="color:#64748b;">${date}</span>
+                            </div>
+                            <div class="review-stars">${stars}</div>
+                            <div class="review-content">${review.content || '此用户没有填写文字评价，默认好评。'}</div>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            })
+            .catch(error => {
+                list.innerHTML = '<div style="color:#ef4444; text-align:center; padding: 20px;">加载评价失败，请稍后再试。</div>';
+            });
+    }
+
+    function closeReviewModal() {
+        document.getElementById('reviewModal').style.display = 'none';
+    }
+
+    document.getElementById('reviewModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeReviewModal();
+        }
+    });
+
+    // ================= 3. 支付弹窗逻辑 =================
+    function openPayModal() {
+        document.getElementById('payModal').style.display = 'flex';
+    }
+
+    function closePayModal() {
+        document.getElementById('payModal').style.display = 'none';
+    }
+
+    function confirmPay() {
+        closePayModal();
+        document.getElementById('realBuyForm').submit();
+    }
+
+    document.getElementById('payModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closePayModal();
+        }
+    });
+
+    // ================= 4. 未读消息数轮询 =================
+    function fetchUnreadCount() {
+        if (document.body.innerHTML.includes('欢迎您')) {
+            fetch('/user/unreadCount?t=' + new Date().getTime())
+                .then(response => response.json())
+                .then(res => {
+                    let count = res.data;
+                    const badge = document.getElementById('unreadBadge');
+                    if (badge) {
+                        if (count && parseInt(count) > 0) {
+                            badge.style.display = 'inline-block';
+                            badge.innerText = count;
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(error => console.log("获取消息数失败: " + error));
+        }
+    }
+    document.addEventListener("DOMContentLoaded", fetchUnreadCount);
+    setInterval(fetchUnreadCount, 10000);
+</script>
+
+</body>
+<!-- ========================================== -->
+<!-- 🚨 首页同款：深空渐变 + 繁星 + 流星雨特效 -->
+<!-- ========================================== -->
+<div id="galaxy-bg" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);">
+
+    <!-- 1. 繁星层 -->
+    <div class="stars star-small"></div>
+    <div class="stars star-medium"></div>
+    <div class="stars star-large"></div>
+
+    <!-- 2. 流星雨层 (10颗彩色流星) -->
+    <div class="meteors-layer">
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+    </div>
+</div>
+
+<style>
+    /* 繁星层 */
+    .stars { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: transparent; }
+
+    .star-small {
+        width: 1px; height: 1px;
+        box-shadow: 10vw 20vh #FFF, 30vw 40vh #FFF, 50vw 60vh #FFF, 70vw 80vh #FFF, 90vw 10vh #FFF, 20vw 70vh #FFF, 40vw 90vh #FFF, 60vw 30vh #FFF, 80vw 50vh #FFF, 15vw 55vh #FFF, 35vw 15vh #FFF, 55vw 75vh #FFF, 75vw 25vh #FFF, 95vw 65vh #FFF, 5vw 85vh #FFF;
+        animation: twinkle-slow 4s infinite alternate;
+    }
+
+    .star-medium {
+        width: 2px; height: 2px;
+        box-shadow: 15vw 25vh #FFF, 35vw 75vh #FFF, 65vw 15vh #FFF, 85vw 55vh #FFF, 5vw 45vh #FFF, 25vw 85vh #FFF, 55vw 35vh #FFF, 75vw 65vh #FFF, 95vw 5vh #FFF, 45vw 95vh #FFF;
+        animation: twinkle-medium 3s infinite alternate;
+    }
+
+    .star-large {
+        width: 3px; height: 3px;
+        filter: drop-shadow(0 0 6px #fff);
+        box-shadow: 20vw 50vh #FFF, 50vw 10vh #FFF, 80vw 70vh #FFF, 10vw 80vh #FFF, 70vw 20vh #FFF, 40vw 30vh #FFF, 90vw 40vh #FFF, 30vw 90vh #FFF;
+        animation: twinkle-fast 2s infinite alternate;
+    }
+
+    @keyframes twinkle-slow { 0% { opacity: 0.2; } 100% { opacity: 0.8; } }
+    @keyframes twinkle-medium { 0% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1.2); } }
+    @keyframes twinkle-fast { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 1; transform: scale(1.5); } }
+
+    /* 流星雨层 */
+    .meteor { position: absolute; width: 160px; height: 2px; opacity: 0; transform: rotate(-45deg); }
+    .meteor:nth-child(1), .meteor:nth-child(2), .meteor:nth-child(3) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+    .meteor:nth-child(4), .meteor:nth-child(5), .meteor:nth-child(6) { background: linear-gradient(90deg, #e0c3fc, rgba(224,195,252,0)); box-shadow: 0 0 10px rgba(224,195,252,0.8); }
+    .meteor:nth-child(7), .meteor:nth-child(8), .meteor:nth-child(9) { background: linear-gradient(90deg, #8ec5fc, rgba(142,197,252,0)); box-shadow: 0 0 10px rgba(142,197,252,0.8); }
+    .meteor:nth-child(10) { background: linear-gradient(90deg, #fff, rgba(255,255,255,0)); }
+
+    .meteor:nth-child(1) { top: -10%; left: 10%; animation: meteor-fall 4s linear infinite; animation-delay: 0s; }
+    .meteor:nth-child(2) { top: -10%; left: 40%; animation: meteor-fall 6s linear infinite; animation-delay: 2s; }
+    .meteor:nth-child(3) { top: -10%; left: 70%; animation: meteor-fall 5s linear infinite; animation-delay: 4s; }
+    .meteor:nth-child(4) { top: -10%; left: 20%; animation: meteor-fall 7s linear infinite; animation-delay: 1s; }
+    .meteor:nth-child(5) { top: -10%; left: 50%; animation: meteor-fall 4.5s linear infinite; animation-delay: 3s; }
+    .meteor:nth-child(6) { top: -10%; left: 80%; animation: meteor-fall 8s linear infinite; animation-delay: 5s; }
+    .meteor:nth-child(7) { top: -10%; left: 30%; animation: meteor-fall 5.5s linear infinite; animation-delay: 6s; }
+    .meteor:nth-child(8) { top: -10%; left: 60%; animation: meteor-fall 7.5s linear infinite; animation-delay: 7s; }
+    .meteor:nth-child(9) { top: -10%; left: 90%; animation: meteor-fall 6.5s linear infinite; animation-delay: 8s; }
+    .meteor:nth-child(10) { top: -10%; left: 45%; animation: meteor-fall 9s linear infinite; animation-delay: 1.5s; }
+
+    @keyframes meteor-fall {
+        0% { transform: translateX(0) translateY(0) rotate(-45deg); opacity: 1; }
+        20% { transform: translateX(-600px) translateY(600px) rotate(-45deg); opacity: 0; }
+        100% { opacity: 0; }
+    }
+</style>
+<!-- ========================================== -->
+<!-- 🚨 特效代码结束 -->
+<!-- ========================================== -->
+</html>
